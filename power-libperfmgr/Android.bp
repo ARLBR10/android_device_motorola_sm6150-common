@@ -23,12 +23,16 @@ cc_library {
     srcs: [
         "disp-power/InteractionHandler.cpp",
     ],
-     shared_libs: [
+    shared_libs: [
         "libbase",
         "libcutils",
         "liblog",
         "libperfmgr",
         "libutils",
+    ],
+    static_libs: [
+        "libaconfig_storage_read_api_cc",
+        "powerhal_flags-aconfig-cc",
     ],
 }
 
