@@ -53,6 +53,7 @@ using android::hidl::manager::V1_0::IServiceManager;
 using namespace std::literals::chrono_literals;
 
 static bool sIsBatteryListened = false;
+static std::mutex sBatteryListenerLock;
 namespace android {
 
 #define GET_HEALTH_SVC_RETRY_CNT 5
@@ -91,45 +92,55 @@ struct BatteryListenerImpl : public hardware::health::V2_1::IHealthInfoCallback,
 status_t BatteryListenerImpl::init()
 {
     int tries = 0;
+    sp<hardware::health::V2_1::IHealth> health;
 
-    if (mHealth != NULL)
-        return INVALID_OPERATION;
+    {
+        std::lock_guard<std::mutex> _l(mLock);
+        if (mHealth != NULL)
+            return INVALID_OPERATION;
+    }
 
     do {
-        mHealth = IHealth::getService();
-        if (mHealth != NULL)
+        health = IHealth::getService();
+        if (health != NULL)
             break;
         usleep(GET_HEALTH_SVC_WAIT_TIME_MS * 1000);
         tries++;
     } while(tries < GET_HEALTH_SVC_RETRY_CNT);
 
-    if (mHealth == NULL) {
+    if (health == NULL) {
         LOC_LOGe("no health service found, retries %d", tries);
         return NO_INIT;
     } else {
         LOC_LOGi("Get health service in %d tries", tries);
     }
-    mStatus = BatteryStatus::UNKNOWN;
-    auto ret = mHealth->getChargeStatus([&](Result r, BatteryStatus status) {
+    BatteryStatus status = BatteryStatus::UNKNOWN;
+    auto ret = health->getChargeStatus([&](Result r, BatteryStatus chargeStatus) {
         if (r != Result::SUCCESS) {
             LOC_LOGe("batterylistener: cannot get battery status");
             return;
         }
-        mStatus = status;
+        status = chargeStatus;
     });
     if (!ret.isOk()) {
         LOC_LOGe("batterylistener: get charge status transaction error");
     }
-    if (mStatus == BatteryStatus::UNKNOWN) {
+    if (status == BatteryStatus::UNKNOWN) {
         LOC_LOGw("batterylistener: init: invalid battery status");
     }
-    mDone = false;
-    mThread = std::make_unique<std::thread>([this]() {
+    {
+        std::lock_guard<std::mutex> _l(mLock);
+        mHealth = health;
+        mStatus = status;
+        mDone = false;
+        mThread = std::make_unique<std::thread>([this]() {
             std::unique_lock<std::mutex> l(mLock);
             BatteryStatus local_status = mStatus;
             while (!mDone) {
                 if (local_status == mStatus) {
-                    mCond.wait(l);
+                    mCond.wait(l, [this, local_status]() {
+                        return mDone || local_status != mStatus;
+                    });
                     continue;
                 }
                 local_status = mStatus;
@@ -144,8 +155,12 @@ status_t BatteryListenerImpl::init()
                     // if a different event comes in within a timeout
                     case BatteryStatus::NOT_CHARGING : {
                         auto mStatusnot_ncharging =
-                                [this, local_status]() { return mStatus != local_status; };
+                                [this, local_status]() {
+                                    return mDone || mStatus != local_status;
+                                };
                         mCond.wait_for(l, 3s, mStatusnot_ncharging);
+                        if (mDone)
+                            break;
                         if (mStatusnot_ncharging()) // i.e event changed
                             break;
                         [[clang::fallthrough]]; //explicit fall-through between switch labels
@@ -159,14 +174,15 @@ status_t BatteryListenerImpl::init()
                         break;
                 }
             }
-    });
-    auto reg = mHealth->registerCallback(this);
+        });
+    }
+    auto reg = health->registerCallback(this);
     if (!reg.isOk()) {
         LOC_LOGe("Transaction error in registeringCb to HealthHAL death: %s",
                 reg.description().c_str());
     }
 
-    auto linked = mHealth->linkToDeath(this, 0 /* cookie */);
+    auto linked = health->linkToDeath(this, 0 /* cookie */);
     if (!linked.isOk() || linked == false) {
         LOC_LOGe("Transaction error in linking to HealthHAL death: %s",
                 linked.description().c_str());
@@ -175,25 +191,31 @@ status_t BatteryListenerImpl::init()
 }
 
 BatteryListenerImpl::BatteryListenerImpl(cb_fn_t cb) :
-        mCb(cb)
+        mStatus(BatteryStatus::UNKNOWN), mCb(cb), mDone(true)
 {
     init();
 }
 
 BatteryListenerImpl::~BatteryListenerImpl()
 {
+    sp<hardware::health::V2_1::IHealth> health;
     {
         std::lock_guard<std::mutex> _l(mLock);
-        if (mHealth != NULL)
-            mHealth->unregisterCallback(this);
-            auto r = mHealth->unlinkToDeath(this);
-            if (!r.isOk() || r == false) {
-                LOC_LOGe("Transaction error in unregister to HealthHAL death: %s",
-                        r.description().c_str());
-            }
+        mDone = true;
+        health = mHealth;
+        mHealth = NULL;
     }
-    mDone = true;
-    mThread->join();
+    mCond.notify_all();
+    if (health != NULL) {
+        health->unregisterCallback(this);
+        auto r = health->unlinkToDeath(this);
+        if (!r.isOk() || r == false) {
+            LOC_LOGe("Transaction error in unregister to HealthHAL death: %s",
+                    r.description().c_str());
+        }
+    }
+    if (mThread != nullptr && mThread->joinable())
+        mThread->join();
 }
 
 void BatteryListenerImpl::serviceDied(uint64_t cookie __unused,
@@ -207,11 +229,11 @@ void BatteryListenerImpl::serviceDied(uint64_t cookie __unused,
         }
         LOC_LOGi("health service died, reinit");
         mDone = true;
+        mHealth = NULL;
     }
-    mHealth = NULL;
-    mCond.notify_one();
-    mThread->join();
-    std::lock_guard<std::mutex> _l(mLock);
+    mCond.notify_all();
+    if (mThread != nullptr && mThread->joinable())
+        mThread->join();
     init();
 }
 
@@ -241,12 +263,25 @@ Return<void> BatteryListenerImpl::healthInfoChanged_2_1(
 static sp<BatteryListenerImpl> batteryListener;
 
 bool batteryPropertiesListenerIsCharging() {
-    return batteryListener->isCharging();
+    sp<BatteryListenerImpl> listener;
+    {
+        std::lock_guard<std::mutex> _l(sBatteryListenerLock);
+        listener = batteryListener;
+    }
+    return listener != nullptr && listener->isCharging();
 }
 
 status_t batteryPropertiesListenerInit(BatteryListenerImpl::cb_fn_t cb) {
-    batteryListener = new BatteryListenerImpl(cb);
-    bool isCharging = batteryPropertiesListenerIsCharging();
+    sp<BatteryListenerImpl> listener;
+    {
+        std::lock_guard<std::mutex> _l(sBatteryListenerLock);
+        if (sIsBatteryListened)
+            return ALREADY_EXISTS;
+        listener = new BatteryListenerImpl(cb);
+        batteryListener = listener;
+        sIsBatteryListened = true;
+    }
+    bool isCharging = listener->isCharging();
     LOC_LOGv("charging status: %s charging", isCharging ? "" : "not");;
     if (isCharging) {
         cb(isCharging);
@@ -255,7 +290,14 @@ status_t batteryPropertiesListenerInit(BatteryListenerImpl::cb_fn_t cb) {
 }
 
 status_t batteryPropertiesListenerDeinit() {
-    batteryListener.clear();
+    sp<BatteryListenerImpl> listener;
+    {
+        std::lock_guard<std::mutex> _l(sBatteryListenerLock);
+        sIsBatteryListened = false;
+        listener = batteryListener;
+        batteryListener.clear();
+    }
+    listener.clear();
     return OK;
 }
 
@@ -263,12 +305,7 @@ status_t batteryPropertiesListenerDeinit() {
 
 void loc_extn_battery_properties_listener_init(battery_status_change_fn_t fn) {
     LOC_LOGv("loc_extn_battery_properties_listener_init entry");
-    if (!sIsBatteryListened) {
-        std::thread t1(android::batteryPropertiesListenerInit,
-                [=](bool charging) { fn(charging); });
-        t1.detach();
-        sIsBatteryListened = true;
-    }
+    android::batteryPropertiesListenerInit([=](bool charging) { fn(charging); });
 }
 
 void loc_extn_battery_properties_listener_deinit() {

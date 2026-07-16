@@ -66,7 +66,6 @@ module = ExtractUtilsModule(
         'hardware/motorola',
         'hardware/qcom-caf/sm8150',
         'hardware/qcom-caf/wlan',
-        'vendor/motorola/odessa',
         'vendor/qcom/opensource/dataservices',
         'vendor/qcom/opensource/display',
     ],
