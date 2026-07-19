@@ -54,6 +54,10 @@ cc_binary {
         "libprocessgroup",
         "pixel-power-ext-V1-ndk",
     ],
+    static_libs: [
+        "libaconfig_storage_read_api_cc",
+        "powerhal_flags-aconfig-cc",
+    ],
     srcs: [
         "aidl/service.cpp",
         "aidl/Power.cpp",
