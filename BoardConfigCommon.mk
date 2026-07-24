@@ -220,7 +220,13 @@ SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(VENDOR_PATH)/sepolicy/private
 BOARD_VENDOR_SEPOLICY_DIRS += $(VENDOR_PATH)/sepolicy/vendor
 
 # Android Verified Boot
+# --flags 3 sets VERIFICATION_DISABLED and HASHTREE_DISABLED in vbmeta. This
+# bootloader has no route to install a custom AVB key, so a vbmeta signed with
+# our key and verification enabled is rejected by ABL on the normal boot path.
+# This matches upstream LineageOS sm6150-common. See
+# docs/avb-vbmeta-flags-boot-failure-20260724.md.
 BOARD_AVB_ENABLE := true
+BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
 
 # WiFi
 BOARD_WLAN_DEVICE := qcwcn
