@@ -141,10 +141,15 @@ PRODUCT_COPY_FILES += \
     frameworks/av/services/audiopolicy/config/usb_audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/usb_audio_policy_configuration.xml
 
 # Boot control
+# The 4.14 kernel has no CONFIG_SCSI_UFS_BSG, so /dev/ufs-bsg* never exists and
+# the BSG boot-LUN switch always fails (breaking setActiveBootSlot and every
+# A/B install). Must stay explicitly false: an unset variable falls through to
+# the select() default in gpt-utils/Android.bp, which also enables BSG.
+$(call soong_config_set_bool,QTI_GPT_UTILS,USE_BSG_FRAMEWORK,false)
+
 PRODUCT_PACKAGES += \
-    android.hardware.boot@1.1-impl-qti \
-    android.hardware.boot@1.1-service \
-    android.hardware.boot@1.1-impl-qti.recovery
+    android.hardware.boot-service.qti \
+    android.hardware.boot-service.qti.recovery
 
 PRODUCT_PACKAGES_DEBUG += \
     bootctl
