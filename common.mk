@@ -147,6 +147,14 @@ PRODUCT_COPY_FILES += \
 # the select() default in gpt-utils/Android.bp, which also enables BSG.
 $(call soong_config_set_bool,QTI_GPT_UTILS,USE_BSG_FRAMEWORK,false)
 
+# Measured on odessa: switching the UFS boot LUN to the B side leaves the next
+# boot in a bootloader that enumerates no partitions at all (slot-count 1, every
+# partition-size empty), before any OS is loaded, and only a full stock reflash
+# recovers it. xbl_b/xbl_config_b are byte-identical to the A copies and are
+# never updated by an A/B payload, so pinning the SoC to the A boot LUN loses
+# nothing. The bootloader picks the boot chain from GPT slot attributes itself.
+$(call soong_config_set_bool,QTI_GPT_UTILS,XBL_SLOT_BY_GPT_ATTRIBUTES,true)
+
 PRODUCT_PACKAGES += \
     android.hardware.boot-service.qti \
     android.hardware.boot-service.qti.recovery
