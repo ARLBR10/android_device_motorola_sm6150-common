@@ -389,6 +389,10 @@ vendor/lib64/libtinyxml2_1.so
 
 # Graphics firmware
 vendor/firmware/a612_rgmu.bin
+vendor/firmware/a615_zap.b00|ee96dc28c5ff4259f50fbcd068389de56a8f233a1f150976a101fed5d1d279fe
+vendor/firmware/a615_zap.b01|b11113d5f9190c2dc70fd30268943cef61a6f47eeeeecd6ab7b5fd62526de0bd
+vendor/firmware/a615_zap.b02|61be42f041eb6051eb9f56beb1f98ed97ab21faf2ef2df6b9151ba1a46aae878
+vendor/firmware/a615_zap.mdt|d380504e3467d6ae5352fb0e44cc90cd8a2e2ad8d5c6a6e3d8f4a714e88ea55d
 vendor/firmware/a618_gmu.bin
 vendor/firmware/a630_gmu.bin
 vendor/firmware/a630_sqe.fw
