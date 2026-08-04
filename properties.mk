@@ -340,3 +340,8 @@ PRODUCT_SYSTEM_DEFAULT_PROPERTIES += \
 
 PRODUCT_PROPERTY_OVERRIDES += \
     zygote.critical_window.minute=10
+
+# Temporary Odessa boot diagnostics; remove after the crash loop is identified.
+PRODUCT_SYSTEM_PROPERTIES += \
+    persist.logd.logpersistd=logcatd \
+    ro.logd.kernel=true
