@@ -1132,6 +1132,7 @@ std::vector<LocationError> GnssAdapter::gnssUpdateConfig(const std::string& oldM
         index++;
     }
 
+    /* Comment out LPP injection as it's configured by MBN.
     if (gnssConfigRequested.flags & GNSS_CONFIG_FLAGS_LPP_PROFILE_VALID_BIT) {
         if (gnssConfigNeedEngineUpdate.flags &
                 GNSS_CONFIG_FLAGS_LPP_PROFILE_VALID_BIT) {
@@ -1142,7 +1143,9 @@ std::vector<LocationError> GnssAdapter::gnssUpdateConfig(const std::string& oldM
         }
         index++;
     }
+    */
 
+    /* Comment out LPPe injection as it's configured by MBN.
     if (gnssConfigRequested.flags & GNSS_CONFIG_FLAGS_LPPE_CONTROL_PLANE_VALID_BIT) {
         if (gnssConfigNeedEngineUpdate.flags &
                 GNSS_CONFIG_FLAGS_LPPE_CONTROL_PLANE_VALID_BIT) {
@@ -1166,6 +1169,7 @@ std::vector<LocationError> GnssAdapter::gnssUpdateConfig(const std::string& oldM
         }
         index++;
     }
+    */
 
     if (gnssConfigRequested.flags &
             GNSS_CONFIG_FLAGS_AGLONASS_POSITION_PROTOCOL_VALID_BIT) {
