@@ -157,12 +157,10 @@ PRODUCT_COPY_FILES += \
 # the select() default in gpt-utils/Android.bp, which also enables BSG.
 $(call soong_config_set_bool,QTI_GPT_UTILS,USE_BSG_FRAMEWORK,false)
 
-# Measured on odessa: switching the UFS boot LUN to the B side leaves the next
-# boot in a bootloader that enumerates no partitions at all (slot-count 1, every
-# partition-size empty), before any OS is loaded, and only a full stock reflash
-# recovers it. xbl_b/xbl_config_b are byte-identical to the A copies and are
-# never updated by an A/B payload, so pinning the SoC to the A boot LUN loses
-# nothing. The bootloader picks the boot chain from GPT slot attributes itself.
+# Odessa requires both parts of the slot switch: all XBL-chain GPT attributes
+# must follow the target, and the UFS boot LUN must select the same side. The
+# historical degraded partition view came from switching only the boot LUN while
+# upstream skipped the XBL GPT attributes; it was not caused by the LUN switch.
 $(call soong_config_set_bool,QTI_GPT_UTILS,XBL_SLOT_BY_GPT_ATTRIBUTES,true)
 
 PRODUCT_PACKAGES += \
