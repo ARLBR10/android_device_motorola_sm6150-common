@@ -75,8 +75,8 @@ on init
     write /config/usb_gadget/g1/os_desc/qw_sign "MSFT100"
     symlink /config/usb_gadget/g1/configs/b.1 /config/usb_gadget/g1/os_desc/b.1
     mkdir /dev/usb-ffs 0775 shell system
-    mkdir /dev/usb-ffs/adb 0770 shell shell
-    mount functionfs adb /dev/usb-ffs/adb uid=2000,gid=2000,rmode=0770,fmode=0660
+    mkdir /dev/usb-ffs/adb 0770 shell system
+    mount functionfs adb /dev/usb-ffs/adb uid=2000,gid=1000,rmode=0770,fmode=0660
     mkdir /dev/ffs-diag 0770 shell system
     mount functionfs diag /dev/ffs-diag uid=2000,gid=1000,rmode=0770,fmode=0660,no_disconnect=1
     mkdir /dev/ffs-diag-1 0770 shell system
@@ -475,10 +475,49 @@ on property:sys.usb.config=rndis,diag,serial && property:sys.usb.configfs=1
 on property:sys.usb.config=diag,serial_cdev,rmnet,adb && property:sys.usb.configfs=1
     start adbd
 
-on boot
+on boot && property:vendor.usb.use_gadget_hal=0
     chown root system /sys/module/uvcvideo/parameters/quirks
     chmod 0660 /sys/module/uvcvideo/parameters/quirks
     setprop sys.usb.configfs 1
+
+on boot && property:vendor.usb.use_gadget_hal=1
+    chown root system /sys/module/uvcvideo/parameters/quirks
+    chmod 0660 /sys/module/uvcvideo/parameters/quirks
+    chown system usb /config/usb_gadget
+    chown system usb /config/usb_gadget/g1
+    chown system usb /config/usb_gadget/g1/UDC
+    chown system usb /config/usb_gadget/g1/bDeviceClass
+    chown system usb /config/usb_gadget/g1/bDeviceProtocol
+    chown system usb /config/usb_gadget/g1/bDeviceSubClass
+    chown system usb /config/usb_gadget/g1/bMaxPacketSize0
+    chown system usb /config/usb_gadget/g1/bcdDevice
+    chown system usb /config/usb_gadget/g1/bcdUSB
+    chown system usb /config/usb_gadget/g1/configs
+    chown system usb /config/usb_gadget/g1/functions
+    chown system usb /config/usb_gadget/g1/idProduct
+    chown system usb /config/usb_gadget/g1/idVendor
+    chown system usb /config/usb_gadget/g1/max_speed
+    chown system usb /config/usb_gadget/g1/os_desc
+    chown system usb /config/usb_gadget/g1/os_desc/b.1
+    chown system usb /config/usb_gadget/g1/os_desc/b_vendor_code
+    chown system usb /config/usb_gadget/g1/os_desc/qw_sign
+    chown system usb /config/usb_gadget/g1/os_desc/use
+    chown system usb /config/usb_gadget/g1/strings
+    chown system usb /config/usb_gadget/g1/strings/0x409
+    chown system usb /config/usb_gadget/g1/strings/0x409/manufacturer
+    chown system usb /config/usb_gadget/g1/strings/0x409/product
+    chown system usb /config/usb_gadget/g1/strings/0x409/serialnumber
+    chown system usb /config/usb_gadget/g1/functions/ffs.adb
+    chown system usb /config/usb_gadget/g1/functions/ffs.mtp
+    chown system usb /config/usb_gadget/g1/functions/ffs.ptp
+    chown system usb /config/usb_gadget/g1/functions/gsi.rndis
+    chown system usb /config/usb_gadget/g1/configs/b.1
+    chown system usb /config/usb_gadget/g1/configs/b.1/MaxPower
+    chown system usb /config/usb_gadget/g1/configs/b.1/bmAttributes
+    chown system usb /config/usb_gadget/g1/configs/b.1/strings
+    chown system usb /config/usb_gadget/g1/configs/b.1/strings/0x409
+    chown system usb /config/usb_gadget/g1/configs/b.1/strings/0x409/configuration
+    setprop sys.usb.configfs 2
 
 on property:sys.usb.config=accessory && property:sys.usb.configfs=1
     write /config/usb_gadget/g1/idVendor 0x18d1

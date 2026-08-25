@@ -59,6 +59,18 @@ lib_fixups: lib_fixups_user_type = {
 
 
 blob_fixups: blob_fixups_user_type = {
+    (
+        'product/etc/permissions/vendor.qti.hardware.data.connection-V1.0-java.xml',
+        'product/etc/permissions/vendor.qti.hardware.data.connection-V1.1-java.xml',
+    ): blob_fixup()
+        .regex_replace('xml version="2.0"', 'xml version="1.0"'),
+    'system_ext/etc/permissions/moto-telephony.xml': blob_fixup()
+        .regex_replace('/system/framework/', '/system/system_ext/framework/'),
+    (
+        'system_ext/lib/lib-imsvideocodec.so',
+        'system_ext/lib64/lib-imsvideocodec.so',
+    ): blob_fixup()
+        .add_needed('libgui_shim.so'),
     'vendor/lib64/libwvhidl.so': blob_fixup()
         .add_needed('libcrypto_shim.so'),
 }  # fmt: skip
